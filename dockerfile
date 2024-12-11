@@ -1,9 +1,9 @@
-FROM python:alpine3.21
+FROM videotheque:1.0
 
-WORKDIR /app
+RUN apt-get update
 
-RUN pip install Flask
+WORKDIR /api
 
-COPY API/ .
+RUN pip install --no-cache-dir flask
 
-CMD ["python", "app.py"]
+COPY . .
