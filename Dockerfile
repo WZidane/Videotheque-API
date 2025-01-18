@@ -4,6 +4,6 @@ RUN apt-get update
 
 WORKDIR /app
 
-RUN pip install --no-cache-dir flask
+RUN pip install --no-cache-dir flask psycopg2 python-dotenv bcrypt
 
 COPY . .
