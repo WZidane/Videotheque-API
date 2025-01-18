@@ -4,8 +4,8 @@ DROP TABLE IF EXISTS "Actors";
 
 CREATE TABLE "public"."Actors" (
     "id" SERIAL PRIMARY KEY,
-    "firstname" character(50) NOT NULL,
-    "surname" character(50) NOT NULL,
+    "firstname" character varying(50) NOT NULL,
+    "surname" character varying(50) NOT NULL,
     CONSTRAINT "Actors_firstname_surname" UNIQUE ("firstname", "surname")
 );
 
@@ -14,7 +14,7 @@ DROP TABLE IF EXISTS "Genre";
 
 CREATE TABLE "public"."Genre" (
     "id" SERIAL PRIMARY KEY,
-    "name" character(50) NOT NULL,
+    "name" character varying(50) NOT NULL,
     CONSTRAINT "Genre_name" UNIQUE ("name")
 );
 
@@ -23,7 +23,7 @@ DROP TABLE IF EXISTS "Language";
 
 CREATE TABLE "public"."Language" (
     "id" SERIAL PRIMARY KEY,
-    "name" character(10) NOT NULL
+    "name" character varying(10) NOT NULL
 );
 
 
@@ -31,13 +31,13 @@ DROP TABLE IF EXISTS "Movie";
 
 CREATE TABLE "public"."Movie" (
     "id" SERIAL PRIMARY KEY,
-    "title" character(250) NOT NULL,
-    "country" character(5) NOT NULL,
-    "director" character(100) NOT NULL,
+    "title" character varying(250) NOT NULL,
+    "country" character varying(5) NOT NULL,
+    "director" character varying(100) NOT NULL,
     "release_date" date NOT NULL,
     "synopsis" text NOT NULL,
     "duration" smallint NOT NULL,
-    "poster" character(200) NOT NULL
+    "poster" character varying(200) NOT NULL
 );
 
 
@@ -45,7 +45,7 @@ DROP TABLE IF EXISTS "Role";
 
 CREATE TABLE "public"."Role" (
     "id" SERIAL PRIMARY KEY,
-    "name" character(20) NOT NULL
+    "name" character varying(20) NOT NULL
 );
 
 
@@ -53,9 +53,9 @@ DROP TABLE IF EXISTS "User";
 
 CREATE TABLE "public"."User" (
     "id" SERIAL PRIMARY KEY,
-    "username" character(20) NOT NULL,
-    "email" character(254) NOT NULL,
-    "password" character(128) NOT NULL,
+    "username" character varying(20) NOT NULL,
+    "email" character varying(254) NOT NULL,
+    "password" character varying(128) NOT NULL,
     "id_role" integer NOT NULL
 );
 
