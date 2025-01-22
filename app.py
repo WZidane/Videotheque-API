@@ -1,13 +1,27 @@
+from datetime import datetime, timedelta, timezone
+import uuid
+
 from flask import Flask, jsonify, request
 import psycopg2
 from dotenv import load_dotenv
 import os
 import bcrypt
+from flask_jwt_extended import JWTManager, create_access_token, jwt_required, get_jwt_identity, get_jwt
+
+ACCESS_EXPIRES = timedelta(hours=1)
 
 # Load the .env file
 load_dotenv()
 
 app = Flask(__name__)
+
+# Initialisation de jwt
+app.config['SECRET_KEY'] = os.getenv('SECRET_KEY')
+app.config["JWT_SECRET_KEY"] = os.getenv('SECRET_KEY')
+app.config['JWT_TOKEN_LOCATION'] = ['headers']
+
+app.config["JWT_ACCESS_TOKEN_EXPIRES"] = ACCESS_EXPIRES
+jwt = JWTManager(app)
 
 conn = psycopg2.connect(
         dbname=os.getenv('DB_NAME'),
@@ -21,8 +35,19 @@ conn = psycopg2.connect(
 def index():
     return "Hello, World! cest pas moi la"
 
-@app.route('/test/login', methods=['POST'])
+@app.route('/api/test', methods=['GET'])
+# Test pour voir si un utilisateur est bien connecté avec son token
+@jwt_required()
 def test():
+    try:
+        user_id = get_jwt_identity()
+        return {"user": str(user_id)}
+    except Exception as e:
+        return jsonify({"error": f"Erreur interne du serveur. : {e}"}), 500
+
+@app.route('/api/login', methods=['POST'])
+def login():
+    cur = conn.cursor()
     try:
         data = request.get_json()
 
@@ -31,46 +56,57 @@ def test():
 
         if not email or not password:
             return jsonify({"error": "Email et mot de passe sont obligatoires."}), 400
-        
-        cur = conn.cursor()
 
         # Récupération du hash de mdp stocké dans la db
-        cur.execute('SELECT password FROM "User" WHERE email = %s', (email,))
+        cur.execute('SELECT username, password FROM "User" WHERE email = %s', (email,))
         result = cur.fetchone()
 
         if not result:
             return jsonify({"error": "Utilisateur non trouvé."}), 404
 
-        stored_password = result[0]
+        stored_password = result[1]
 
-        # Vérification du mot de passe
+        # Vérification du mot de passe et envoi du token si le mdp est bon
         if bcrypt.checkpw(password.encode('utf-8'), stored_password.encode('utf-8')):
-            return jsonify({"message": "Connexion réussie."}), 200
+            access_token = create_access_token(identity=result[0])
+            return jsonify({'message': 'Login Success', 'access_token': access_token}), 200
         else:
             return jsonify({"error": "Mot de passe incorrect."}), 401
         
     except Exception as e:
         print(f"Erreur : {e}")
-        return jsonify({"error": "Erreur interne du serveur."}), 500
+        return jsonify({"error": f"Erreur interne du serveur. : {e}"}), 500
     
     finally:
         cur.close()
 
-@app.route('/api/users/<int:page>', methods=['GET'])
-def getUsersByPage(page):
-    
-    cur = conn.cursor()
+# Endpoint for revoking the current user's access token
+@app.route("/api/logout", methods=["DELETE"])
+@jwt_required()
+def modify_token():
+    jti = get_jwt()["jti"]
+    now = datetime.now(timezone.utc)
 
-    cur.execute(
-        'SELECT u.id, u.username, u.email, r.name FROM "User" u JOIN "Role" r on r.id = u.id_role ORDER BY u.id LIMIT 50 OFFSET %s', 
-        ((page-1)*50,)
+    try:
+        cur = conn.cursor()
+
+        # Insertion du JTI dans la table blacklist_token
+        cur.execute(
+            "INSERT INTO blacklist_token (jti, created_at) VALUES (%s, %s)",
+            (jti, now)
         )
 
-    results = cur.fetchall()
+        # Valider la transaction
+        conn.commit()
 
-    cur.close()
+        return jsonify(msg="JWT revoked")
 
-    return results, 200
+    except Exception as e:
+        print(f"Erreur lors de l'accès à la base de données : {e}")
+        return jsonify(msg="Erreur lors de la révocation du JWT"), 500
+
+    finally:
+        cur.close()
 
 @app.route('/api/user', methods=['POST'])
 def createUser():
@@ -108,7 +144,7 @@ def createUser():
 
     except Exception as e:
         print(f"Erreur : {e}")
-        return jsonify({"error": "Erreur interne du serveur."}), 500
+        return jsonify({"error": f"Erreur interne du serveur : {e}"}), 500
 
     finally:
         cur.close()
@@ -139,5 +175,37 @@ def deleteUser(id_user):
         print(f"erreur : {e}")
         return jsonify({"error": f"Erreur interne du serveur : {e}"}), 500
 
+    finally:
+        cur.close()
+
+@app.route('/api/users/<int:page>', methods=['GET'])
+def getUsersByPage(page):
+    
+    cur = conn.cursor()
+
+    cur.execute(
+        'SELECT u.id, u.username, u.email, r.name FROM "User" u JOIN "Role" r on r.id = u.id_role ORDER BY u.id LIMIT 50 OFFSET %s', 
+        ((page-1)*50,)
+        )
+
+    results = cur.fetchall()
+
+    cur.close()
+
+    return results, 200
+
+# Fonction appelée lors d'un @jwt_required(), sert à vérifier si un token est blacklist ou non
+@jwt.token_in_blocklist_loader
+def check_if_token_revoked(jwt_header, jwt_payload: dict) -> bool:
+    jti = jti = uuid.UUID(jwt_payload["jti"])
+    cur = conn.cursor()
+    try:
+        cur.execute('SELECT id FROM "blacklist_token" WHERE jti=%s', (str(jti),))
+        token = cur.fetchone()
+
+        # Retourne True si le token est dans la liste noire, sinon False
+        return token is not None
+    except Exception as e:
+        return jsonify({"error": "Il y a eu une erreur interne du serveur"}), 500
     finally:
         cur.close()
