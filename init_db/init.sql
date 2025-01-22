@@ -26,10 +26,9 @@ CREATE TABLE "public"."Movie" (
     "title_en" character varying(250) NOT NULL,
     "country" character varying(5) NOT NULL,
     "director" character varying(100) NOT NULL,
-    "release_date" date NOT NULL,
+    "release_date" character varying(20) NOT NULL,
     "synopsis_fr" text NOT NULL,
     "synopsis_en" text NOT NULL,
-    "duration" smallint NOT NULL,
     "poster" character varying(200) NOT NULL
 );
 
@@ -46,7 +45,7 @@ DROP TABLE IF EXISTS "User";
 
 CREATE TABLE "public"."User" (
     "id" SERIAL PRIMARY KEY,
-    "username" character varying(20) NOT NULL,
+    "username" character varying(20) NOT NULL UNIQUE,
     "email" character varying(254) NOT NULL,
     "password" character varying(128) NOT NULL,
     "id_role" integer NOT NULL
