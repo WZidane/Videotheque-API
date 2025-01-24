@@ -1,12 +1,8 @@
 from datetime import datetime, timedelta, timezone
-import uuid
-
 from flask import Flask, jsonify, request
-import psycopg2
 from dotenv import load_dotenv
-import os
-import bcrypt
 from flask_jwt_extended import JWTManager, create_access_token, jwt_required, get_jwt_identity, get_jwt
+import psycopg2, os, bcrypt, json, uuid
 
 ACCESS_EXPIRES = timedelta(hours=1)
 
@@ -14,6 +10,7 @@ ACCESS_EXPIRES = timedelta(hours=1)
 load_dotenv()
 
 app = Flask(__name__)
+app.url_map.strict_slashes = False
 
 # Initialisation de jwt
 app.config['SECRET_KEY'] = os.getenv('SECRET_KEY')
@@ -111,8 +108,6 @@ def modify_token():
 @app.route('/api/user', methods=['POST'])
 def createUser():
     try:
-        # Récupération des données envoyées par la requête POST
-        data = request.get_json()
 
         username = data.get('username')
         email = data.get('email')
@@ -178,6 +173,7 @@ def deleteUser(id_user):
     finally:
         cur.close()
 
+        
 @app.route('/api/users/<int:page>', methods=['GET'])
 def getUsersByPage(page):
     
@@ -209,3 +205,128 @@ def check_if_token_revoked(jwt_header, jwt_payload: dict) -> bool:
         return jsonify({"error": "Il y a eu une erreur interne du serveur"}), 500
     finally:
         cur.close()
+        
+@app.route('/api/users', methods=['GET'])
+def getUsers():
+    try:
+        cur = conn.cursor()
+
+        cur.execute('SELECT * FROM "User"')
+
+        result = cur.fetchall()
+
+        cles = ["id", "username", "email", "password", "id_role"]
+
+        table = [] 
+        for sous_liste in result:
+            objet = {}
+            for index, valeur in enumerate(sous_liste):
+                objet[cles[index]] = valeur
+            table.append(objet)
+
+        res = {}
+
+        res['Users'] = table
+
+        return res
+
+    except Exception as e:
+        print(f"erreur : {e}")
+        return jsonify({"error": f"Erreur interne du serveur : {e}"}), 500
+
+    finally:
+        cur.close()
+
+@app.route('/api/movies', methods=['GET'])
+def getMovies():
+    try:
+        cur = conn.cursor()
+
+        cur.execute('SELECT * FROM "Movie"')
+
+        result = cur.fetchall()
+
+        cles = ["id", "id_imdb", "title", "country", "director", "synopsis", "duration", "poster", "release_date"]
+
+        table = [] 
+        for sous_liste in result:
+            objet = {}
+            for index, valeur in enumerate(sous_liste):
+                objet[cles[index]] = valeur
+            table.append(objet)
+
+        res = {}
+
+        res['Movies'] = table
+
+        return res
+
+    except Exception as e:
+        print(f"erreur : {e}")
+        return jsonify({"error": f"Erreur interne du serveur : {e}"}), 500
+
+    finally:
+        cur.close()
+
+@app.route('/api/movie/<id>', methods=['GET'])
+def getMovie(id):
+    try:
+
+        cur = conn.cursor()
+
+        cur.execute('SELECT * FROM "Movie" WHERE id_tmdb = %s', (id,))
+
+        result = cur.fetchall()
+
+        cles = ["id", "id_tmdb", "title", "country", "director", "synopsis", "duration", "poster", "release_date"]
+
+        table = [] 
+        for sous_liste in result:
+            objet = {}
+            for index, valeur in enumerate(sous_liste):
+                objet[cles[index]] = valeur
+            table.append(objet)
+
+        res = {}
+
+        res['Movie'] = table
+
+        if(res['Movie']):
+            return res
+        else:
+            return jsonify({'error': 404});
+
+    except Exception as e:
+        print(f"erreur : {e}")
+        return jsonify({"error": f"Erreur interne du serveur : {e}"}), 500
+
+    finally:
+        cur.close()
+
+@app.route('/api/movie/', methods=['POST'])
+def createMovie():
+    try:
+
+        data = request.get_json()
+
+        id_tmdb = data.get('id')
+        title = data.get('title')
+        country = data.get('country')
+        synopsis = data.get('synopsis')
+        poster = data.get('poster')
+        release_date = data.get('release_date')
+
+        if not id_tmdb or not title or not country or not synopsis or not poster or not release_date:
+            return jsonify({"error": "Tous les champs sont obligatoires."}), 400
+        
+        cur = conn.cursor()
+
+        cur.execute('INSERT INTO "Movie" (id_tmdb, title, country, director, synopsis, duration, poster, release_date) VALUES (%s, %s, %s, %s, %s, %s, %s, %s);', (id_tmdb, title, country, "Moi", synopsis, 20, poster, release_date))
+
+        conn.commit()
+        
+        return jsonify({"message": "Film créé avec succès."}), 201
+
+    except Exception as e:
+        print(f"erreur : {e}")
+        return jsonify({"error": f"Erreur interne du serveur : {e}"}), 500
