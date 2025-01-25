@@ -46,7 +46,7 @@ DROP TABLE IF EXISTS "User";
 CREATE TABLE "public"."User" (
     "id" SERIAL PRIMARY KEY,
     "username" character varying(20) NOT NULL UNIQUE,
-    "email" character varying(254) NOT NULL,
+    "email" character varying(254) NOT NULL UNIQUE,
     "password" character varying(128) NOT NULL,
     "id_role" integer NOT NULL
 );
