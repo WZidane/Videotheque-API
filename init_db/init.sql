@@ -22,12 +22,13 @@ DROP TABLE IF EXISTS "Movie";
 CREATE TABLE "public"."Movie" (
     "id" SERIAL PRIMARY KEY,
     "id_tmdb" bigint NOT NULL UNIQUE,
-    "title" character varying(250) NOT NULL,
+    "title_fr" character varying(250) NOT NULL,
+    "title_en" character varying(250) NOT NULL,
     "country" character varying(5) NOT NULL,
     "director" character varying(100) NOT NULL,
-    "release_date" date NOT NULL,
-    "synopsis" text NOT NULL,
-    "duration" smallint NOT NULL,
+    "release_date" character varying(20) NOT NULL,
+    "synopsis_fr" text NOT NULL,
+    "synopsis_en" text NOT NULL,
     "poster" character varying(200) NOT NULL
 );
 
@@ -44,7 +45,7 @@ DROP TABLE IF EXISTS "User";
 
 CREATE TABLE "public"."User" (
     "id" SERIAL PRIMARY KEY,
-    "username" character varying(20) NOT NULL,
+    "username" character varying(20) NOT NULL UNIQUE,
     "email" character varying(254) NOT NULL,
     "password" character varying(128) NOT NULL,
     "id_role" integer NOT NULL
@@ -76,6 +77,15 @@ CREATE TABLE "public"."language_movie" (
     "id_language" integer NOT NULL,
     "id_movie" integer NOT NULL,
     CONSTRAINT "language_movie_id_language_id_movie" UNIQUE ("id_language", "id_movie")
+);
+
+DROP TABLE IF EXISTS "blacklist_token";
+
+CREATE TABLE "blacklist_token" (
+  "id" serial NOT NULL,
+  PRIMARY KEY ("id"),
+  "jti" uuid NOT NULL,
+  "created_at" date NOT NULL
 );
 
 
