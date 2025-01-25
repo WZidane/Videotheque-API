@@ -111,6 +111,8 @@ def createUser():
     try:
         data = request.get_json()
 
+        data = request.get_json()
+
         username = data.get('username')
         email = data.get('email')
         password = data.get('password')
@@ -131,7 +133,7 @@ def createUser():
         RETURNING id;
         '''
 
-        cur.execute(query, (username, email, hashed_password_encoded, 1))
+        cur.execute(query, (username, email, hashed_password_encoded, 2))
 
         conn.commit()
 
@@ -143,10 +145,8 @@ def createUser():
         print(f"Erreur : {e}")
         return jsonify({"error": f"Erreur interne du serveur : {e}"}), 500
 
-    finally:
+    finally: 
         cur.close()
-
-
 
 @app.route('/api/user/<int:id_user>', methods=['DELETE'])
 def deleteUser(id_user):
@@ -279,7 +279,7 @@ def getMovie(id):
 
         result = cur.fetchall()
 
-        cles = ["id", "id_tmdb", "title", "country", "director", "synopsis", "duration", "poster", "release_date"]
+        cles = ["id", "id_tmdb", "title_fr", "title_en", "country", "release_date", "synopsis_fr", "synopsis_en", "poster"]
 
         table = [] 
         for sous_liste in result:
@@ -292,7 +292,7 @@ def getMovie(id):
 
         res['Movie'] = table
 
-        if(res['Movie']):
+        if(result):
             return res
         else:
             return jsonify({'error': 404});
@@ -311,18 +311,21 @@ def createMovie():
         data = request.get_json()
 
         id_tmdb = data.get('id')
-        title = data.get('title')
+        title_fr = data.get('title_fr')
+        title_en = data.get('title_en')
         country = data.get('country')
-        synopsis = data.get('synopsis')
-        poster = data.get('poster')
         release_date = data.get('release_date')
+        synopsis_fr = data.get('synopsis_fr')
+        synopsis_en = data.get('synopsis_en')
+        poster = data.get('poster')
+        
 
-        if not id_tmdb or not title or not country or not synopsis or not poster or not release_date:
+        if not id_tmdb or not title_fr or not title_en or not country or not synopsis_fr or not synopsis_en or not poster or not release_date:
             return jsonify({"error": "Tous les champs sont obligatoires."}), 400
         
         cur = conn.cursor()
 
-        cur.execute('INSERT INTO "Movie" (id_tmdb, title, country, director, synopsis, duration, poster, release_date) VALUES (%s, %s, %s, %s, %s, %s, %s, %s);', (id_tmdb, title, country, "Moi", synopsis, 20, poster, release_date))
+        cur.execute('INSERT INTO "Movie" (id_tmdb, title_fr, title_en, country, synopsis_fr, synopsis_en, poster, release_date) VALUES (%s, %s, %s, %s, %s, %s, %s, %s);', (id_tmdb, title_fr, title_en, country, synopsis_fr, synopsis_en, poster, release_date))
 
         conn.commit()
         
@@ -331,7 +334,16 @@ def createMovie():
     except Exception as e:
         print(f"erreur : {e}")
         return jsonify({"error": f"Erreur interne du serveur : {e}"}), 500
-    
+
+
+@app.route('/api/isconnected', methods=['GET'])
+# Test pour voir si un utilisateur est bien connecté avec son token
+@jwt_required()
+def isConnected():
+    try:
+        return jsonify({"isConnected": True}), 200
+    except Exception as e:
+        return jsonify({"isConnected": f"Erreur interne du serveur. : {e}"}), 500
     finally:
         cur.close()
     
