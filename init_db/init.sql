@@ -1,22 +1,5 @@
 -- Adminer 4.8.1 PostgreSQL 17.2 (Debian 17.2-1.pgdg120+1) dump
 
-DROP TABLE IF EXISTS "Genre";
-
-CREATE TABLE "public"."Genre" (
-    "id" SERIAL PRIMARY KEY,
-    "name" character varying(50) NOT NULL,
-    CONSTRAINT "Genre_name" UNIQUE ("name")
-);
-
-
-DROP TABLE IF EXISTS "Language";
-
-CREATE TABLE "public"."Language" (
-    "id" SERIAL PRIMARY KEY,
-    "name" character varying(10) NOT NULL
-);
-
-
 DROP TABLE IF EXISTS "Movie";
 
 CREATE TABLE "public"."Movie" (
@@ -61,24 +44,6 @@ CREATE TABLE "public"."Videotheque" (
     CONSTRAINT "Videotheque_user_id_movie_id" UNIQUE ("user_id", "movie_id")
 );
 
-DROP TABLE IF EXISTS "genre_movie";
-CREATE TABLE "public"."genre_movie" (
-    "id" SERIAL PRIMARY KEY,
-    "genre_id" integer NOT NULL,
-    "movie_id" integer NOT NULL,
-    CONSTRAINT "genre_movie_genre_id_movie_id" UNIQUE ("genre_id", "movie_id")
-);
-
-
-DROP TABLE IF EXISTS "language_movie";
-
-CREATE TABLE "public"."language_movie" (
-    "id" SERIAL PRIMARY KEY,
-    "id_language" integer NOT NULL,
-    "id_movie" integer NOT NULL,
-    CONSTRAINT "language_movie_id_language_id_movie" UNIQUE ("id_language", "id_movie")
-);
-
 DROP TABLE IF EXISTS "blacklist_token";
 
 CREATE TABLE "blacklist_token" (
@@ -93,11 +58,4 @@ ALTER TABLE ONLY "public"."User" ADD CONSTRAINT "User_id_role_fkey" FOREIGN KEY 
 
 ALTER TABLE ONLY "public"."Videotheque" ADD CONSTRAINT "Videotheque_movie_id_fkey" FOREIGN KEY (movie_id) REFERENCES "Movie"(id) ON DELETE CASCADE NOT DEFERRABLE;
 ALTER TABLE ONLY "public"."Videotheque" ADD CONSTRAINT "Videotheque_user_id_fkey" FOREIGN KEY (user_id) REFERENCES "User"(id) ON DELETE CASCADE NOT DEFERRABLE;
-
-ALTER TABLE ONLY "public"."genre_movie" ADD CONSTRAINT "genre_movie_genre_id_fkey" FOREIGN KEY (genre_id) REFERENCES "Genre"(id) NOT DEFERRABLE;
-ALTER TABLE ONLY "public"."genre_movie" ADD CONSTRAINT "genre_movie_movie_id_fkey" FOREIGN KEY (movie_id) REFERENCES "Movie"(id) NOT DEFERRABLE;
-
-ALTER TABLE ONLY "public"."language_movie" ADD CONSTRAINT "language_movie_id_language_fkey" FOREIGN KEY (id_language) REFERENCES "Language"(id) NOT DEFERRABLE;
-ALTER TABLE ONLY "public"."language_movie" ADD CONSTRAINT "language_movie_id_movie_fkey" FOREIGN KEY (id_movie) REFERENCES "Movie"(id) NOT DEFERRABLE;
-
 -- 2024-12-13 13:18:40.474562+00
