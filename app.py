@@ -29,20 +29,6 @@ conn = psycopg2.connect(
         port=os.getenv('DB_PORT')  
     )
 
-@app.route('/api', methods=['GET'])
-def index():
-    return "Hello, World! cest pas moi la"
-
-@app.route('/api/isconnected', methods=['GET'])
-# Test pour voir si un utilisateur est bien connecté avec son token
-@jwt_required()
-def isConnected():
-    try:
-        user_id = get_jwt_identity()
-        return {"isConnected": True}
-    except Exception as e:
-        return jsonify({"error": f"Erreur interne du serveur. : {e}"}), 500
-
 @app.route('/api/login', methods=['POST'])
 def login():
     cur = conn.cursor()
