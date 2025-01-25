@@ -320,7 +320,8 @@ def createMovie():
     except Exception as e:
         print(f"erreur : {e}")
         return jsonify({"error": f"Erreur interne du serveur : {e}"}), 500
-
+    finally:
+        cur.close()
 
 @app.route('/api/isconnected', methods=['GET'])
 # Test pour voir si un utilisateur est bien connecté avec son token
