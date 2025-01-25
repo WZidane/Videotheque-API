@@ -3,6 +3,7 @@ from flask import Flask, jsonify, request
 from dotenv import load_dotenv
 from flask_jwt_extended import JWTManager, create_access_token, jwt_required, get_jwt_identity, get_jwt
 import psycopg2, os, bcrypt, json, uuid
+from psycopg2.extras import RealDictCursor
 
 ACCESS_EXPIRES = timedelta(hours=1)
 
@@ -32,13 +33,13 @@ conn = psycopg2.connect(
 def index():
     return "Hello, World! cest pas moi la"
 
-@app.route('/api/test', methods=['GET'])
+@app.route('/api/isconnected', methods=['GET'])
 # Test pour voir si un utilisateur est bien connecté avec son token
 @jwt_required()
-def test():
+def isConnected():
     try:
         user_id = get_jwt_identity()
-        return {"user": str(user_id)}
+        return {"isConnected": True}
     except Exception as e:
         return jsonify({"error": f"Erreur interne du serveur. : {e}"}), 500
 
@@ -108,6 +109,7 @@ def modify_token():
 @app.route('/api/user', methods=['POST'])
 def createUser():
     try:
+        data = request.get_json()
 
         data = request.get_json()
 
@@ -160,7 +162,6 @@ def deleteUser(id_user):
 
         conn.commit()
 
-        # Vérifie si un utilisateur a été supprimé
         if cur.rowcount > 0:
             return jsonify({"message": f"L'utilisateur avec l'ID {id_user} a été supprimé."}), 200
         else:
@@ -199,7 +200,7 @@ def check_if_token_revoked(jwt_header, jwt_payload: dict) -> bool:
         cur.execute('SELECT id FROM "blacklist_token" WHERE jti=%s', (str(jti),))
         token = cur.fetchone()
 
-        # Retourne True si le token est dans la liste noire, sinon False
+        # Retourne True si le token est blacklist
         return token is not None
     except Exception as e:
         return jsonify({"error": "Il y a eu une erreur interne du serveur"}), 500
@@ -343,3 +344,106 @@ def isConnected():
         return jsonify({"isConnected": True}), 200
     except Exception as e:
         return jsonify({"isConnected": f"Erreur interne du serveur. : {e}"}), 500
+    finally:
+        cur.close()
+    
+@app.route('/api/collection/<id>', methods=['POST'])
+@jwt_required()
+def addToCollection(id):
+    username = get_jwt_identity()
+
+    try: 
+        cur = conn.cursor()
+        cur.execute('SELECT id FROM "User" WHERE username=%s',(username,))
+        user_id = cur.fetchone()
+        if(user_id):
+            cur.execute('SELECT id FROM "Movie" WHERE id_tmdb=%s', (id,))
+            movie_id = cur.fetchone()
+            if(movie_id):
+                cur.execute('INSERT INTO "Videotheque" ("user_id", "movie_id") VALUES (%s, %s);', (user_id, movie_id))
+                conn.commit()
+
+                return jsonify({"message": "Le film a été ajouté à la collection"}), 201
+            return jsonify({"error": "Le film n'existe pas dans la bdd"}), 404
+        return jsonify({"error": "L'utilisateur n'existe pas"}), 404
+    except Exception as e:
+        return jsonify({"error": f"Erreur interne du serveur : {e}"}), 500
+    finally:
+        cur.close()
+
+@app.route('/api/collection', methods=['GET'])
+@jwt_required()
+def getCollection():
+    username = get_jwt_identity()
+    data = request.get_json()
+    language = data.get("language")
+    
+    if language:
+        title = f"title_{language}"
+        synopsis = f"title_{language}"
+    else:
+        title = "title_fr"
+        synopsis = "synopsis_fr"
+
+    cur = None
+    try: 
+        cur = conn.cursor()
+        cur.execute('SELECT id, username FROM "User" WHERE username=%s',(username,))
+        user = cur.fetchone()
+        cur.close()
+        if(user):
+            cur = conn.cursor(cursor_factory=RealDictCursor)
+            query = f'SELECT m.id, m.id_tmdb, m.{title}, m.{synopsis}, m.poster FROM "Videotheque" v INNER JOIN "Movie" m ON v.movie_id = m.id WHERE user_id=%s'
+            cur.execute(query, (user[0],))
+            results = cur.fetchall()
+            return jsonify({"user": user, "movies": results}), 200
+        return jsonify({"error": "L'utilisateur n'existe pas"}), 404
+    except Exception as e:
+        return jsonify({"error": f"Erreur interne du serveur : {e}"}), 500
+    finally:
+        if cur:
+            cur.close()
+
+@app.route('/api/collection/<id>', methods=['DELETE'])
+@jwt_required()
+def removeFromCollection(id):
+    username = get_jwt_identity()
+
+    try: 
+        cur = conn.cursor()
+        cur.execute('SELECT id FROM "User" WHERE username=%s',(username,))
+        user_id = cur.fetchone()
+        if(user_id):
+            cur.execute('SELECT v.id FROM "Videotheque" v INNER JOIN "Movie" m ON v.movie_id=m.id WHERE m.id_tmdb=%s AND v.user_id=%s', (id,user_id,))
+            v_id = cur.fetchone()
+            if(v_id):
+                cur.execute('DELETE FROM "Videotheque" WHERE (("id" = %s));', (v_id,))
+                conn.commit()
+
+                return jsonify({"message": "Le film a été supprimé de la collection"}), 200
+            return jsonify({"error": "Ce film n'est pas dans votre collection"}), 400
+        return jsonify({"error": "L'utilisateur n'existe pas"}), 404
+    except Exception as e:
+        return jsonify({"error": f"Erreur interne du serveur : {e}"}), 500
+    finally:
+        cur.close()
+
+@app.route('/api/collection/<id>', methods=['GET'])
+@jwt_required()
+def isInCollection(id):
+    username = get_jwt_identity()
+
+    try:
+        cur = conn.cursor()
+        cur.execute('SELECT id FROM "User" WHERE username=%s',(username,))
+        user_id = cur.fetchone()
+        if user_id:
+            cur.execute('SELECT v.id FROM "Videotheque" v INNER JOIN "Movie" m ON v.movie_id=m.id WHERE m.id_tmdb=%s AND v.user_id=%s', (id,user_id,))
+            v_id = cur.fetchone()
+            if v_id:
+                return jsonify({'isInCollection': True}), 200
+            return jsonify({'isInCollection': False}), 200
+    except Exception as e:
+        return jsonify({"error": "Erreur interne du serveur"}), 500
+    finally:
+        cur.close()
