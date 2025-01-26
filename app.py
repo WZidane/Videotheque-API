@@ -97,8 +97,6 @@ def createUser():
     try:
         data = request.get_json()
 
-        data = request.get_json()
-
         username = data.get('username')
         email = data.get('email')
         password = data.get('password')
@@ -108,36 +106,54 @@ def createUser():
             return jsonify({"error": "Tous les champs (username, email, password) sont obligatoires."}), 400
         cur = conn.cursor()
 
-        hashedPassword = bcrypt.hashpw(password.encode('utf-8'), bcrypt.gensalt())
+        cur.execute('SELECT id FROM "User" WHERE username=%s OR email=%s', (username, email,))
 
-        # Encodage en UTF-8 pour stockage
-        hashed_password_encoded = hashedPassword.decode('utf-8')
+        result = cur.fetchone()
+        cur.close()
+        if not result:
+            hashedPassword = bcrypt.hashpw(password.encode('utf-8'), bcrypt.gensalt())
 
-        query = '''
-        INSERT INTO "User" (username, email, password, id_role) 
-        VALUES (%s, %s, %s, %s)
-        RETURNING id;
-        '''
+            # Encodage en UTF-8 pour stockage
+            hashed_password_encoded = hashedPassword.decode('utf-8')
 
-        cur.execute(query, (username, email, hashed_password_encoded, 2))
+            cur = conn.cursor()
 
-        conn.commit()
+            query = '''
+            INSERT INTO "User" (username, email, password, id_role) 
+            VALUES (%s, %s, %s, %s)
+            RETURNING id;
+            '''
 
-        # Succès
-        return jsonify({"message": "Utilisateur créé avec succès."}), 201
+            cur.execute(query, (username, email, hashed_password_encoded, 2))
+
+            conn.commit()
+
+            # Succès
+            return jsonify({"message": "Utilisateur créé avec succès."}), 201
+        return jsonify({"error": "Un utilisateur avec le même email/mdp existe déjà"}), 409
 
 
     except Exception as e:
-        print(f"Erreur : {e}")
         return jsonify({"error": f"Erreur interne du serveur : {e}"}), 500
 
-    finally: 
-        cur.close()
+    finally:
+        if cur:
+            cur.close()
 
 @app.route('/api/user/<int:id_user>', methods=['DELETE'])
 def deleteUser(id_user):
     try:
         cur = conn.cursor()
+
+        cur.execute('SELECT id FROM "User" WHERE id=%s', (id_user,))
+
+        result = cur.fetchone()
+        if not result:
+            cur.close()
+            return jsonify({"error": "Utilisateur non trouvé."}), 404
+        cur.close()
+
+        cur=conn.cursor()
 
         delete_query = 'DELETE FROM "User" WHERE id = %s'
 
