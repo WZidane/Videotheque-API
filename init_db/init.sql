@@ -8,7 +8,6 @@ CREATE TABLE "public"."Movie" (
     "title_fr" character varying(250) NOT NULL,
     "title_en" character varying(250) NOT NULL,
     "country" character varying(5) NOT NULL,
-    "director" character varying(100) NOT NULL,
     "release_date" character varying(20) NOT NULL,
     "synopsis_fr" text NOT NULL,
     "synopsis_en" text NOT NULL,
