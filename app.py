@@ -130,7 +130,7 @@ def createUser():
 
             # Succès
             return jsonify({"message": "Utilisateur créé avec succès."}), 201
-        return jsonify({"error": "Un utilisateur avec le même email/mdp existe déjà"}), 409
+        return jsonify({"error": "Un utilisateur avec le même email/username existe déjà"}), 409
 
 
     except Exception as e:
